@@ -27,32 +27,40 @@ import errno
 import glob
 import urllib.request
 import urllib.error
-import configparser
+from configparser import ConfigParser
 from string import Template
 from distutils.dir_util import copy_tree
 import pkgutil
 import webbrowser
 
+from typing import Union, List
+from pathlib import Path
+from whichcraft import which
 import click
 
+from utils import cfg_is_valid
 
-class AliasedGroup(click.Group):
-    def get_command(self, ctx, cmd_name):
-        rv = click.Group.get_command(self, ctx, cmd_name)
-        if rv is not None:
-            return rv
-        matches = [x for x in self.list_commands(ctx)
-                   if x.startswith(cmd_name)]
-        if not matches:
-            return None
-        elif len(matches) == 1:
-            return click.Group.get_command(self, ctx, matches[0])
-        ctx.fail('Too many matches: %s' % ', '.join(sorted(matches)))
+__version__ = "3.0.6"
+__date__ = '2017-11-05'
 
 
-#@click.group()
-@click.command(cls=AliasedGroup)
-def cli():
+def __get_config(ini_file: Union[Path, str]) -> ConfigParser:
+    ini_file = Path(ini_file)
+    if not ini_file.is_file():
+        click.secho('Configuration file was not found', color='red')
+        sys.exit(1)
+
+    configuration = ConfigParser()
+    configuration.read_file(ini_file)
+
+    return configuration
+
+
+@click.group()
+@click.pass_context
+@click.option('--config', default='pb_tool.cfg',
+              help='Name of the config file to use if other than pb_tool.cfg')
+def cli(ctx):
     """Simple Python tool to compile and deploy a QGIS plugin.
     For help on a command use --help after the command:
     pb_tool deploy --help.
@@ -68,45 +76,42 @@ def cli():
     Bugs and enhancement requests, see:
         https://github.com/g-sherman/plugin_build_tool
     """
-    pass
+
+    ctx.ensure_object(dict)
+    configuration = __get_config(config)
+    if cfg_is_valid(configuration) is False:
+        return 1
+
+    ctx.obj['configuration'] = configuration
 
 
-def __version():
-    """ return the current version and date released """
-    # TODO update this with each release
-    return ("3.0.6", "2017-11-05")
-
-
-def get_install_files(cfg):
-    python_files = cfg.get('files', 'python_files').split()
-    main_dialog = cfg.get('files', 'main_dialog').split()
-    extras = cfg.get('files', 'extras').split()
-    # merge the file lists
-    install_files = python_files + main_dialog + compiled_ui(
-        cfg) + compiled_resource(cfg) + extras
-    #click.echo(install_files)
-    return install_files
+# def get_install_files(cfg):
+#     python_files = cfg.get('files', 'python_files').split()
+#     main_dialog = cfg.get('files', 'main_dialog').split()
+#     extras = cfg.get('files', 'extras').split()
+#     # merge the file lists
+#     install_files = python_files + main_dialog + compiled_ui(
+#         cfg) + compiled_resource(cfg) + extras
+#     #click.echo(install_files)
+#     return install_files
 
 
 @cli.command()
 def version():
     """Return the version of pb_tool and exit"""
-    click.echo("{}, {}".format(__version()[0], __version()[1]))
+    click.echo("{}, {}".format(__version__, __date__))
+    return 0
 
 
 @cli.command()
-@click.option('--config',
-              default='pb_tool.cfg',
+@click.option('--config', default='pb_tool.cfg',
               help='Name of the config file to use if other than pb_tool.cfg')
-@click.option('--plugin_path', '-p',
-              default=None,
+@click.option('--plugin_path', '-p', default=None,
               help='Specify the directory where to deploy your plugin if not using the standard location')
-@click.option('--quick', '-q',
-              is_flag=True,
+@click.option('--quick', '-q', is_flag=True,
               help='Do a quick install without compiling ui, resource, docs, \
               and translation files')
-@click.option('--no-confirm', '-y',
-              is_flag=True,
+@click.option('--no-confirm', '-y', is_flag=True,
               help='Don\'t ask for confirmation to overwrite existing files')
 def deploy(config, plugin_path, quick, no_confirm):
     """Deploy the plugin to QGIS plugin directory using parameters in pb_tool.cfg"""
@@ -134,9 +139,9 @@ def deploy_files(config, plugin_path, confirm=True, quick=False):
             click.secho("Doing quick deployment", fg='green')
             install_files(plugin_dir, cfg)
             click.secho(
-                "Quick deployment complete---if you have problems with your"
-                " plugin, try doing a full deploy.",
-                fg='green')
+                    "Quick deployment complete---if you have problems with your"
+                    " plugin, try doing a full deploy.",
+                    fg='green')
 
         else:
             if confirm:
@@ -178,11 +183,11 @@ def install_files(plugin_dir, cfg):
             print("")
         except Exception as oops:
             errors.append(
-                "Error copying files: {0}, {1}".format(file, oops.strerror))
+                    "Error copying files: {0}, {1}".format(file, oops.strerror))
             click.echo(click.style(' ----> ERROR', fg='red'))
             fail = True
         extra_dirs = cfg.get('files', 'extra_dirs').split()
-        #print "EXTRA DIRS: {}".format(extra_dirs)
+        # print "EXTRA DIRS: {}".format(extra_dirs)
     for xdir in extra_dirs:
         click.secho("Copying contents of {0} to {1}".format(xdir, plugin_dir),
                     fg='magenta',
@@ -192,7 +197,7 @@ def install_files(plugin_dir, cfg):
             print("")
         except Exception as oops:
             errors.append(
-                "Error copying directory: {0}, {1}".format(xdir, oops.message))
+                    "Error copying directory: {0}, {1}".format(xdir, oops.message))
             click.echo(click.style(' ----> ERROR', fg='red'))
             fail = True
     help_src = cfg.get('help', 'dir')
@@ -201,13 +206,13 @@ def install_files(plugin_dir, cfg):
     click.secho("Copying {0} to {1}".format(help_src, help_target),
                 fg='magenta',
                 nl=False)
-    #shutil.copytree(help_src, help_target)
+    # shutil.copytree(help_src, help_target)
     try:
         copy_tree(help_src, help_target)
         print("")
     except Exception as oops:
         errors.append("Error copying help files: {0}, {1}".format(
-            help_src, oops.message))
+                help_src, oops.message))
         click.echo(click.style(' ----> ERROR', fg='red'))
         fail = True
     if fail:
@@ -216,11 +221,11 @@ def install_files(plugin_dir, cfg):
             print(error)
         print("")
         print(
-            "One or more files/directories specified in your config file\n"
-            "failed to deploy---make sure they exist or if not needed remove\n"
-            "them from the config. To ensure proper deployment, make sure your\n"
-            "UI and resource files are compiled. Using dclean to delete the\n"
-            "plugin before deploying may also help.")
+                "One or more files/directories specified in your config file\n"
+                "failed to deploy---make sure they exist or if not needed remove\n"
+                "them from the config. To ensure proper deployment, make sure your\n"
+                "UI and resource files are compiled. Using dclean to delete the\n"
+                "plugin before deploying may also help.")
 
 
 def clean_deployment(ask_first=True, config='pb_tool.cfg'):
@@ -230,7 +235,7 @@ def clean_deployment(ask_first=True, config='pb_tool.cfg'):
     plugin_dir = os.path.join(get_plugin_directory(), name)
     if ask_first:
         proceed = click.confirm(
-            'Delete the deployed plugin from {0}?'.format(plugin_dir))
+                'Delete the deployed plugin from {0}?'.format(plugin_dir))
     else:
         proceed = True
 
@@ -327,8 +332,7 @@ def build_docs():
 
 
 @cli.command()
-@click.option('--config',
-              default='pb_tool.cfg',
+@click.option('--config', default='pb_tool.cfg',
               help='Name of the config file to use if other than pb_tool.cfg')
 def translate(config):
     """ Build translations using lrelease. Locales must be specified
@@ -366,36 +370,29 @@ def translate(config):
 @click.option('--config',
               default='pb_tool.cfg',
               help='Name of the config file to use if other than pb_tool.cfg')
-@click.option(
-    '--quick', '-q',
-    is_flag=True,
-    help='Do a quick packaging without dclean and deploy (plugin must have been previously deployed)'
-)
-def zip(config, quick):
+@click.option('--quick', '-q', is_flag=True,
+              help='Do a quick packaging without dclean and deploy (plugin must have been previously deployed)')
+@click.option('--compress-format', type=click.Choice(['zip', 'gz']), default='zip')
+def zip(config, quick, compress_format):
     """ Package the plugin into a zip file
     suitable for uploading to the QGIS
     plugin repository"""
 
     # check to see if we can find zip or 7z
-    use_7z = False
-    zip = check_path('zip')
-    if not zip:
-        # check for 7z
-        zip = check_path('7z')
-        if not zip:
-            click.secho('zip or 7z not found. Unable to package the plugin',
-                        fg='red')
-            click.secho('Check your path or install a zip program', fg='red')
-            return
-        else:
-            use_7z = True
+    zip = find_zip()
+
+    zip_util = find_zip() or find_7z() or None
+    if zip_util is None:
+        click.secho('zip or 7z not found. Unable to package the plugin',
+                    fg='red')
+        click.secho('Check your path or install a zip program', fg='red')
     click.secho('Found zip: %s' % zip, fg='green')
 
     name = get_config(config).get('plugin', 'name', fallback=None)
     if not quick:
         proceed = click.confirm('This requires a dclean and deploy first. Proceed?')
         if proceed:
-            #clean_deployment(False, config)
+            # clean_deployment(False, config)
             deploy_files(config, plugin_path=None, confirm=False)
     else:
         # Check to see if the plugin directory exists, otherwise we can't
@@ -410,9 +407,9 @@ def zip(config, quick):
             deploy_files(config, plugin_path=None, confirm=False)
         proceed = True
 
-    #confirm = click.confirm(
+    # confirm = click.confirm(
     #    'Create a packaged plugin ({0}.zip) from the deployed files?'.format(name))
-    #confirm = True
+    # confirm = True
     if proceed:
         # delete the zip if it exists
         if os.path.exists('{0}.zip'.format(name)):
@@ -423,92 +420,25 @@ def zip(config, quick):
             # click.secho("Current directory is {}".format(os.getcwd()), fg='magenta')
             if use_7z:
                 subprocess.check_call(
-                    [zip, 'a', '-r', os.path.join(cwd, '{0}.zip'.format(name)),
-                     name])
+                        [zip, 'a', '-r', os.path.join(cwd, '{0}.zip'.format(name)),
+                         name])
             else:
                 subprocess.check_call([
                     zip, '-r', os.path.join(cwd, '{0}.zip'.format(name)), name
                 ])
 
             print(
-                'The {0}.zip archive has been created in the current directory'.format(
-                    name))
+                    'The {0}.zip archive has been created in the current directory'.format(
+                            name))
         else:
             click.echo(
-                "Your config file is missing the plugin name (name=parameter)")
+                    "Your config file is missing the plugin name (name=parameter)")
 
 
 @cli.command()
 @click.option('--config',
               default='pb_tool.cfg',
               help='Name of the config file to use if other than pb_tool.cfg')
-def validate(config):
-    """
-    Check the pb_tool.cfg file for mandatory sections/files.
-    Detect the plugin install path and presence of a suitable zip utilty.
-    """
-    valid = True
-    cfg = get_config(config)
-    if not check_cfg(cfg, 'plugin', 'name'):
-        valid = False
-    if not check_cfg(cfg, 'files', 'python_files'):
-        valid = False
-    if not check_cfg(cfg, 'files', 'main_dialog'):
-        valid = False
-    if not check_cfg(cfg, 'files', 'resource_files'):
-        valid = False
-    if not check_cfg(cfg, 'files', 'extras'):
-        valid = False
-    if not check_cfg(cfg, 'help', 'dir'):
-        valid = False
-    if not check_cfg(cfg, 'help', 'target'):
-        valid = False
-
-
-    click.secho("Using Python {}".format(sys.version), fg='green')
-    if valid:
-        click.secho(
-            "Your {0} file is valid and contains all mandatory items".format(
-                config),
-            fg='green')
-    else:
-        click.secho("Your {0} file is invalid".format(config), fg='red')
-    try:
-        from PyQt5.QtCore import QStandardPaths, QDir
-        path = QStandardPaths.standardLocations(QStandardPaths.AppDataLocation)[0]
-        plugin_path = os.path.join(QDir.homePath(), path, 'QGIS/QGIS3/profiles/default/python/plugins')
-        click.secho("Plugin path: {}".format(plugin_path), fg='green')
-    except:
-        click.secho("""Unable to determine location of your QGIS Plugin directory.
-        Make sure your QGIS environment is setup properly for development and Python
-        has access to the PyQt4.QtCore module.""", fg='red')
-
-    zipbin = find_zip()
-    a7z = find_7z()
-    if zipbin:
-        zip_utility = zipbin
-    elif a7z:
-        zip_utility = a7z
-    else:
-        zip_utility = None
-    if not zip_utility:
-        click.secho('zip or 7z not found. Unable to package the plugin',
-                    fg='red')
-        click.secho('Check your path or install a zip program', fg='red')
-    else:
-        click.secho('Found suitable zip utility: {}'.format(zip_utility), fg='green')
-    # check for templates - uncomment next 4 after create function is done
-    #print(__file__)
-    #print("Module: {}".format (sys.modules['pb_tool']))
-    #basic_tmpl = pkgutil.get_data('pb_tool', 'templates/basic.tmpl')
-    #print("Read basic template: {}".format(str(basic_tmpl, 'utf-8')))
-
-    #f = open('pb_tool/templates/basic.tmpl')
-    #if f:
-    #    print("opened basic.tmpl")
-    #else:
-    #    print("unable to find basic.tmpl")
-
 
 
 @cli.command()
@@ -523,10 +453,9 @@ def list(config):
                 print(line[:-1])
     else:
         click.secho(
-            "There is no {0} file in the current directory".format(config),
-            fg='red')
+                "There is no {0} file in the current directory".format(config),
+                fg='red')
         click.secho("We can't do anything without it", fg='red')
-
 
 
 @cli.command()
@@ -547,15 +476,16 @@ def create(modulename=None, classname=None, menutext=None):
     # print("Creating {} in module {} with menu text {}".format(classname, modulename, menutext))
     print("This feature is not implemented yet")
 
+
 @cli.command()
 @click.option(
-    '--name',
-    default='pb_tool.cfg',
-    help='Name of the config file to create if other than pb_tool.cfg')
+        '--name',
+        default='pb_tool.cfg',
+        help='Name of the config file to create if other than pb_tool.cfg')
 @click.option(
-    '--package',
-    default=None,
-    help='Name of package (lower case). This will be used as the directory name for deployment')
+        '--package',
+        default=None,
+        help='Name of package (lower case). This will be used as the directory name for deployment')
 def config(name, package):
     """
     Create a config file based on source files in the current directory
@@ -568,7 +498,7 @@ def config(name, package):
             return
     template = Template(config_template())
     # get the plugin package name
-    
+
     if not package:
         cfg_name = click.prompt('Name of package (lower case). This will be used as the directory name for deployment')
     else:
@@ -627,8 +557,8 @@ def update():
         u = urllib.request.urlopen('http://geoapt.net/pb_tool/current3_version.txt')
         version = str(u.read()[:-1], 'utf-8')
         click.secho("Latest version is %s" % version, fg='green')
-        this_version = int(__version()[0].replace('.',''))
-        current_version = int(version.replace('.',''))
+        this_version = int(__version()[0].replace('.', ''))
+        current_version = int(version.replace('.', ''))
 
         if this_version == current_version:
             click.secho("Your version is up to date", fg='green')
@@ -649,6 +579,7 @@ def update():
 def help():
     "Open the pb_tools web page in your default browser"
     webbrowser.open_new('http://g-sherman.github.io/plugin_build_tool')
+    return 0
 
 
 def check_cfg(cfg, section, name):
@@ -659,7 +590,7 @@ def check_cfg(cfg, section, name):
         print(oops.message)
     except configparser.NoSectionError:
         print("Missing section '{0}' when looking for option '{1}'".format(
-            section, name))
+                section, name))
     return False
 
 
@@ -670,7 +601,7 @@ def get_config(config='pb_tool.cfg'):
     if os.path.exists(config):
         cfg = configparser.ConfigParser()
         cfg.read(config)
-        #click.echo(cfg.sections())
+        # click.echo(cfg.sections())
         return cfg
     else:
         print("There is no {0} file in the current directory".format(config))
@@ -679,14 +610,14 @@ def get_config(config='pb_tool.cfg'):
 
 
 def compiled_ui(cfg):
-    #cfg = get_config(config)
+    # cfg = get_config(config)
     try:
         uis = cfg.get('files', 'compiled_ui_files').split()
         compiled = []
         for ui in uis:
             (base, ext) = os.path.splitext(ui)
             compiled.append('{0}.py'.format(base))
-        #print "Compiled UI files: {}".format(compiled)
+        # print "Compiled UI files: {}".format(compiled)
         return compiled
     except configparser.NoSectionError as oops:
         print(oops.message)
@@ -694,14 +625,14 @@ def compiled_ui(cfg):
 
 
 def compiled_resource(cfg):
-    #cfg = get_config(config)
+    # cfg = get_config(config)
     try:
         res_files = cfg.get('files', 'resource_files').split()
         compiled = []
         for res in res_files:
             (base, ext) = os.path.splitext(res)
             compiled.append('{0}.py'.format(base))
-        #print "Compiled resource files: {}".format(compiled)
+        # print "Compiled resource files: {}".format(compiled)
         return compiled
     except configparser.NoSectionError as oops:
         print(oops.message)
@@ -711,12 +642,12 @@ def compiled_resource(cfg):
 def compile_files(cfg):
     # Compile all ui and resource files
     # TODO add changed detection
-    #cfg = get_config(config)
+    # cfg = get_config(config)
 
     # check to see if we have pyuic5
-    pyuic5 = check_path('pyuic5')
+    pyuic5 = find_pyuic5()
 
-    if not pyuic5:
+    if pyuic5 is None:
         print("pyuic5 is not in your path---unable to compile your ui files")
     else:
         ui_files = cfg.get('files', 'compiled_ui_files').split()
@@ -736,12 +667,12 @@ def compile_files(cfg):
         print("Compiled {0} UI files".format(ui_count))
 
     # check to see if we have pyrcc5
-    pyrcc5 = check_path('pyrcc5')
+    pyrcc5 = find_pyuic5()
 
-    if not pyrcc5:
+    if pyrcc5 is None:
         click.secho(
-            "pyrcc5 is not in your path---unable to compile your resource file(s)",
-            fg='red')
+                "pyrcc5 is not in your path---unable to compile your resource file(s)",
+                fg='red')
     else:
         res_files = cfg.get('files', 'resource_files').split()
         res_count = 0
@@ -774,7 +705,7 @@ def copy(source, destination):
 
     """
     try:
-        #shutil.copytree(source, destination)
+        # shutil.copytree(source, destination)
         copy_tree(source, destination)
     except OSError as e:
         # If the error was caused because the source wasn't a directory
@@ -895,13 +826,3 @@ def file_changed(infile, outfile):
         return infile_s.st_mtime > outfile_s.st_mtime
     except:
         return True
-
-def find_zip():
-    # check to see if we can find zip 
-    zip = check_path('zip')
-    return zip
-
-def find_7z():
-    # check for 7z
-    zip = check_path('7z')
-    return zip
