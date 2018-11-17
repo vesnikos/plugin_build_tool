@@ -17,6 +17,8 @@
  *                                                                         *
  ***************************************************************************/
 """
+__version__ = "3.0.6"
+__date__ = '2017-11-05'
 __author__ = 'gsherman'
 
 import os
@@ -32,15 +34,13 @@ from string import Template
 from distutils.dir_util import copy_tree
 import webbrowser
 
-from typing import Union, List
+from typing import Union
 from pathlib import Path
 
 import click
 
-from utils import cfg_is_valid, get_qgis_plugin_directory
-
-__version__ = "3.0.6"
-__date__ = '2017-11-05'
+from utils import cfg_is_valid, qgis_dst_plugin_folder
+from utils.files import install_files, clean_deployment, compile_files
 
 
 def __get_config(ini_file: Union[Path, str]) -> ConfigParser:
@@ -118,30 +118,31 @@ def deploy(ctx, plugin_path, quick, no_confirm):
 
     # The plugin is going to be deployed in either in the User specified folder, or the folder declared in the
     # ini file or the default QGIS addon folder
-    qgis_plugin_dir = plugin_path \
-                      or configuration.get('plugin', 'plugin_path', fallback=None) \
-                      or get_qgis_plugin_directory()
+
+    qgis_dst_plugin_root = plugin_path \
+                           or configuration.get('plugin', 'plugin_path', fallback=None) \
+                           or qgis_dst_plugin_folder()
 
     plugin_name = configuration.get('plugin', 'name')
 
-    this_plugin_root = qgis_plugin_dir / plugin_name
-    click.secho(f"Deploying to {this_plugin_root}", fg='green')
+    qgis_dst_plugin_root = qgis_dst_plugin_root / plugin_name
+    click.secho(f"Deploying to {qgis_dst_plugin_root}", fg='green')
 
     if quick:
-        install_files()  # TODO
+        install_files(qgis_dst_plugin_root, configuration)
         click.secho(
             "Quick deployment complete---if you have problems with your"
             " plugin, try doing a full deploy.",
             fg='green')
         return 0
 
-    clean_deployment(False, config)  # TODO
-    click.secho(f"Deploying to {this_plugin_root}", fg='green')
+    clean_deployment(qgis_dst_plugin_root)
+    click.secho(f"Deploying to {qgis_dst_plugin_root}", fg='green')
     # compile to make sure everything is fresh
     click.secho('Compiling to make sure install is clean', fg='green')
     compile_files(cfg)  # TODO
     build_docs()  # TODO
-    install_files(plugin_dir, cfg)  # TODO
+    install_files(qgis_dst_plugin_root, configuration)
 
     # deploy_files(config, plugin_path, quick=quick, confirm=not no_confirm)
 
@@ -196,67 +197,67 @@ def deploy(ctx, plugin_path, quick, no_confirm):
 #                 install_files(plugin_dir, cfg)
 
 
-def install_files(plugin_dir, cfg):
-    errors = []
-    install_files = get_install_files(cfg)
-    # make the plugin directory if it doesn't exist
-    if not os.path.exists(plugin_dir):
-        os.mkdir(plugin_dir)
+# def install_files2(plugin_dir, cfg):
+#     errors = []
+#     install_files = get_install_files(cfg)
+#     # make the plugin directory if it doesn't exist
+#     if not os.path.exists(plugin_dir):
+#         os.mkdir(plugin_dir)
+#
+#     fail = False
+#     for file in install_files:
+#         click.secho("Copying {0}".format(file), fg='magenta', nl=False)
+#         try:
+#             shutil.copy(file, os.path.join(plugin_dir, file))
+#             print("")
+#         except Exception as oops:
+#             errors.append(
+#                 "Error copying files: {0}, {1}".format(file, oops.strerror))
+#             click.echo(click.style(' ----> ERROR', fg='red'))
+#             fail = True
+#         extra_dirs = cfg.get('files', 'extra_dirs').split()
+#         # print "EXTRA DIRS: {}".format(extra_dirs)
+#     for xdir in extra_dirs:
+#         click.secho("Copying contents of {0} to {1}".format(xdir, plugin_dir),
+#                     fg='magenta',
+#                     nl=False)
+#         try:
+#             copy_tree(xdir, "{0}/{1}".format(plugin_dir, xdir))
+#             print("")
+#         except Exception as oops:
+#             errors.append(
+#                 "Error copying directory: {0}, {1}".format(xdir, oops.message))
+#             click.echo(click.style(' ----> ERROR', fg='red'))
+#             fail = True
+#     help_src = cfg.get('help', 'dir')
+#     help_target = os.path.join(plugin_dir,
+#                                cfg.get('help', 'target'))
+#     click.secho("Copying {0} to {1}".format(help_src, help_target),
+#                 fg='magenta',
+#                 nl=False)
+#     # shutil.copytree(help_src, help_target)
+#     try:
+#         copy_tree(help_src, help_target)
+#         print("")
+#     except Exception as oops:
+#         errors.append("Error copying help files: {0}, {1}".format(
+#             help_src, oops.message))
+#         click.echo(click.style(' ----> ERROR', fg='red'))
+#         fail = True
+#     if fail:
+#         print("\nERRORS:")
+#         for error in errors:
+#             print(error)
+#         print("")
+#         print(
+#             "One or more files/directories specified in your config file\n"
+#             "failed to deploy---make sure they exist or if not needed remove\n"
+#             "them from the config. To ensure proper deployment, make sure your\n"
+#             "UI and resource files are compiled. Using dclean to delete the\n"
+#             "plugin before deploying may also help.")
 
-    fail = False
-    for file in install_files:
-        click.secho("Copying {0}".format(file), fg='magenta', nl=False)
-        try:
-            shutil.copy(file, os.path.join(plugin_dir, file))
-            print("")
-        except Exception as oops:
-            errors.append(
-                "Error copying files: {0}, {1}".format(file, oops.strerror))
-            click.echo(click.style(' ----> ERROR', fg='red'))
-            fail = True
-        extra_dirs = cfg.get('files', 'extra_dirs').split()
-        # print "EXTRA DIRS: {}".format(extra_dirs)
-    for xdir in extra_dirs:
-        click.secho("Copying contents of {0} to {1}".format(xdir, plugin_dir),
-                    fg='magenta',
-                    nl=False)
-        try:
-            copy_tree(xdir, "{0}/{1}".format(plugin_dir, xdir))
-            print("")
-        except Exception as oops:
-            errors.append(
-                "Error copying directory: {0}, {1}".format(xdir, oops.message))
-            click.echo(click.style(' ----> ERROR', fg='red'))
-            fail = True
-    help_src = cfg.get('help', 'dir')
-    help_target = os.path.join(plugin_dir,
-                               cfg.get('help', 'target'))
-    click.secho("Copying {0} to {1}".format(help_src, help_target),
-                fg='magenta',
-                nl=False)
-    # shutil.copytree(help_src, help_target)
-    try:
-        copy_tree(help_src, help_target)
-        print("")
-    except Exception as oops:
-        errors.append("Error copying help files: {0}, {1}".format(
-            help_src, oops.message))
-        click.echo(click.style(' ----> ERROR', fg='red'))
-        fail = True
-    if fail:
-        print("\nERRORS:")
-        for error in errors:
-            print(error)
-        print("")
-        print(
-            "One or more files/directories specified in your config file\n"
-            "failed to deploy---make sure they exist or if not needed remove\n"
-            "them from the config. To ensure proper deployment, make sure your\n"
-            "UI and resource files are compiled. Using dclean to delete the\n"
-            "plugin before deploying may also help.")
 
-
-def clean_deployment(ask_first=True, config='pb_tool.cfg'):
+def clean_deployment2(ask_first=True, config='pb_tool.cfg'):
     """ Remove the deployed plugin from the .qgis2/python/plugins directory
     """
     name = get_config(config).get('plugin', 'name')
@@ -665,56 +666,56 @@ def compiled_resource(cfg):
         sys.exit(1)
 
 
-def compile_files(cfg):
-    # Compile all ui and resource files
-    # TODO add changed detection
-    # cfg = get_config(config)
-
-    # check to see if we have pyuic5
-    pyuic5 = find_pyuic5()
-
-    if pyuic5 is None:
-        print("pyuic5 is not in your path---unable to compile your ui files")
-    else:
-        ui_files = cfg.get('files', 'compiled_ui_files').split()
-        ui_count = 0
-        for ui in ui_files:
-            if os.path.exists(ui):
-                (base, ext) = os.path.splitext(ui)
-                output = "{0}.py".format(base)
-                if file_changed(ui, output):
-                    print("Compiling {0} to {1}".format(ui, output))
-                    subprocess.check_call([pyuic5, '-o', output, ui])
-                    ui_count += 1
-                else:
-                    print("Skipping {0} (unchanged)".format(ui))
-            else:
-                print("{0} does not exist---skipped".format(ui))
-        print("Compiled {0} UI files".format(ui_count))
-
-    # check to see if we have pyrcc5
-    pyrcc5 = find_pyuic5()
-
-    if pyrcc5 is None:
-        click.secho(
-            "pyrcc5 is not in your path---unable to compile your resource file(s)",
-            fg='red')
-    else:
-        res_files = cfg.get('files', 'resource_files').split()
-        res_count = 0
-        for res in res_files:
-            if os.path.exists(res):
-                (base, ext) = os.path.splitext(res)
-                output = "{0}.py".format(base)
-                if file_changed(res, output):
-                    print("Compiling {0} to {1}".format(res, output))
-                    subprocess.check_call([pyrcc5, '-o', output, res])
-                    res_count += 1
-                else:
-                    print("Skipping {0} (unchanged)".format(res))
-            else:
-                print("{0} does not exist---skipped".format(res))
-        print("Compiled {0} resource files".format(res_count))
+# def compile_files2(cfg):
+#     # Compile all ui and resource files
+#     # TODO add changed detection
+#     # cfg = get_config(config)
+#
+#     # check to see if we have pyuic5
+#     pyuic5 = find_pyuic5()
+#
+#     if pyuic5 is None:
+#         print("pyuic5 is not in your path---unable to compile your ui files")
+#     else:
+#         ui_files = cfg.get('files', 'compiled_ui_files').split()
+#         ui_count = 0
+#         for ui in ui_files:
+#             if os.path.exists(ui):
+#                 (base, ext) = os.path.splitext(ui)
+#                 output = "{0}.py".format(base)
+#                 if file_changed(ui, output):
+#                     print("Compiling {0} to {1}".format(ui, output))
+#                     subprocess.check_call([pyuic5, '-o', output, ui])
+#                     ui_count += 1
+#                 else:
+#                     print("Skipping {0} (unchanged)".format(ui))
+#             else:
+#                 print("{0} does not exist---skipped".format(ui))
+#         print("Compiled {0} UI files".format(ui_count))
+#
+#     # check to see if we have pyrcc5
+#     pyrcc5 = find_pyuic5()
+#
+#     if pyrcc5 is None:
+#         click.secho(
+#             "pyrcc5 is not in your path---unable to compile your resource file(s)",
+#             fg='red')
+#     else:
+#         res_files = cfg.get('files', 'resource_files').split()
+#         res_count = 0
+#         for res in res_files:
+#             if os.path.exists(res):
+#                 (base, ext) = os.path.splitext(res)
+#                 output = "{0}.py".format(base)
+#                 if file_changed(res, output):
+#                     print("Compiling {0} to {1}".format(res, output))
+#                     subprocess.check_call([pyrcc5, '-o', output, res])
+#                     res_count += 1
+#                 else:
+#                     print("Skipping {0} (unchanged)".format(res))
+#             else:
+#                 print("{0} does not exist---skipped".format(res))
+#         print("Compiled {0} resource files".format(res_count))
 
 
 def copy(source, destination):

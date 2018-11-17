@@ -2,13 +2,14 @@ import platform
 
 from pathlib import Path
 
-from .configuration_ops import cfg_is_valid, install_files_list
+from .configuration_ops import cfg_is_valid
 from .find_qgis_dir import qgis_plugin_dir
 
-__all__ = ['cfg_is_valid', 'qgis_plugin_dir', 'install_files_list', 'get_qgis_plugin_directory']
+__all__ = ['cfg_is_valid', 'qgis_plugin_dir', 'qgis_dst_plugin_folder']
 
 
-def get_qgis_plugin_directory(profile='default') -> Path:
+def qgis_dst_plugin_folder(profile='default') -> Path:
+    """ The QGIS master Plugin folder """
 
     # caveat: env variable QGIS_PLUGINPATH overrides everything?
 
