@@ -2,10 +2,9 @@ import platform
 
 from pathlib import Path
 
-from .configuration_ops import cfg_is_valid
 from .find_qgis_dir import qgis_plugin_dir
 
-__all__ = ['cfg_is_valid', 'qgis_plugin_dir', 'qgis_dst_plugin_folder']
+__all__ = [ 'qgis_plugin_dir', 'qgis_dst_plugin_folder']
 
 
 def qgis_dst_plugin_folder(profile='default') -> Path:

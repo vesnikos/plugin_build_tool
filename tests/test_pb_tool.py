@@ -1,89 +1,45 @@
-import os
+from pathlib import Path
+import pytest
 
-import click
-from click.testing import CliRunner
-from pb_tool import pb_tool
-
-runner = CliRunner()
+TESTS_DIR = Path(__file__).parent
 
 
-def test_validate():
-    result = runner.invoke(pb_tool.cli, ['validate'])
-    assert result.exit_code == 0
+@pytest.fixture
+def valid_conf_file():
+    ret = TESTS_DIR / 'sample1' / 'pb_tool.cfg'
+    ret = ret.as_posix()
+    return ret
 
 
+def test_conf_is_valid(valid_conf_file):
+    from pb_tool.utils.configuration import PbConf
+    config = PbConf(valid_conf_file)
 
-def test_clean():
-    result = runner.invoke(pb_tool.cli, ['clean'])
-    assert result.exit_code == 0
-
-
-def test_cleandocs():
-    result = runner.invoke(pb_tool.cli, ['clean_docs'])
-    assert result.exit_code == 0
+    assert config.is_valid is True
 
 
-def test_config():
-    result = runner.invoke(pb_tool.cli,
-                           ['config', '--name', 'test_from_pytest.cfg',
-                            '--package', 'testname'], input='y\n')
-    assert result.exit_code == 0
-    assert os.path.exists('test_from_pytest.cfg') == 1
+def test_conf_get_py_files(valid_conf_file):
+    from pb_tool.utils.configuration import PbConf
+    config = PbConf(valid_conf_file)
+
+    res = config.python_files
+    assert res == [Path('__init__.py'),
+                   Path('test_plugin.py'),
+                   Path('test_plugin_dialog.py'),
+                   Path('folder1/file.py'),
+                   Path('folder1/subfolder1/file.py'),
+                   Path('folder1/subfolder1/file2.py')]
 
 
-def test_create():
-    result = runner.invoke(pb_tool.cli, ['create'])
-    assert result.exit_code == 0
+def test_conf_get_extra_files(valid_conf_file):
+    from pb_tool.utils.configuration import PbConf
+    config = PbConf(valid_conf_file)
+
+    assert config.extra_files
 
 
-def test_doc():
-    result = runner.invoke(pb_tool.cli, ['doc'])
-    assert result.exit_code == 0
+def test_conf_get_main_dialog(valid_conf_file):
+    from pb_tool.utils.configuration import PbConf
+    config = PbConf(valid_conf_file)
 
-
-def test_deploy():
-    result = runner.invoke(pb_tool.cli, ['deploy'], input='y\n')
-    assert result.exit_code == 0
-
-def test_zip():
-    result = runner.invoke(pb_tool.cli, ['zip'], input='y\n')
-    assert result.exit_code == 0
-    #assert os.path.exists(os.path.join(os.getcwd(), 'whereami.zip'))
-
-
-def test_dclean():
-    result = runner.invoke(pb_tool.cli, ['dclean'], input='y\n')
-    assert result.exit_code == 0
-
-
-# def test_help():
-#     result = runner.invoke(pb_tool.cli, ['help'])
-#     assert result.exit_code == 0
-
-
-def test_list():
-    result = runner.invoke(pb_tool.cli, ['list'])
-    assert result.exit_code == 0
-
-
-def test_validate():
-    result = runner.invoke(pb_tool.cli, ['validate'])
-    assert result.exit_code == 0
-
-def test_update():
-    result = runner.invoke(pb_tool.cli, ['update'])
-    assert result.exit_code == 0
-
-def test_version():
-    result = runner.invoke(pb_tool.cli, ['version'])
-    assert result.exit_code == 0
-
-def test_compile():
-    result = runner.invoke(pb_tool.cli, ['compile'])
-    assert result.exit_code == 0
-
-#    results.append("Command validate failed: {}".format(result.output))
-#print("testing validate: {}".format(result))
-#result = runner.invoke(pb_tool.cli, ['zip', '-q'])
-#print("testing zip: {}".format(result))
-#print results
+    assert config.main_dialog

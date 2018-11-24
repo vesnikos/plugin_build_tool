@@ -21,6 +21,7 @@
 from setuptools import *
 
 setup(
+        python_requires='>3.7',
         name='pb_tool',
         version='3.0.6',
         description='Plugin build tool for QGIS: A tool to aid in QGIS Python plugin development',
@@ -46,13 +47,13 @@ setup(
         py_modules=['pb_tool'],
         install_requires=[
             'Click<8',
-            'Sphinx',
-            'colorama;platform_system=="Windows"',
             'whichcraft',
-
+            'colorama;platform_system=="Windows"',
         ],
         extras_require={
-            'dev': ['bumpversion', 'tox',],
+            'docs': ['Sphinx'],
+            'dev': ['bumpversion', 'tox'],
+            'test':['pytest']
         },
         entry_points='''
         [console_scripts]

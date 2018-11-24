@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+from warnings import warn
 from distutils.dir_util import copy_tree
 from pathlib import Path
 from typing import Union, List
@@ -216,3 +217,4 @@ def compile_files(config: ConfigParser):
 pyuic5_exec = find_pyuic5()
 pyrcc5_exec = find_pyrcc5()
 zip_exec = find_zip()
+
