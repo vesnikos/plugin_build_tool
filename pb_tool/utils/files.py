@@ -1,6 +1,5 @@
 import shutil
 import subprocess
-from warnings import warn
 from distutils.dir_util import copy_tree
 from pathlib import Path
 from typing import Union, List
@@ -30,6 +29,11 @@ def find_7z():
     # check for 7z
     _7z = which('7z')
     return _7z
+
+
+pyuic5_exec = find_pyuic5()
+pyrcc5_exec = find_pyrcc5()
+zip_exec = find_zip()
 
 
 def file_changed(this: Union[str, Path], other: Union[str, Path]) -> bool:
@@ -214,7 +218,14 @@ def compile_files(config: ConfigParser):
     print("Compiled {0} resource files".format(counter))
 
 
-pyuic5_exec = find_pyuic5()
-pyrcc5_exec = find_pyrcc5()
-zip_exec = find_zip()
 
+
+def compile_ui(input_ui_file: Path, output_py_file: Path=None):
+    """ Compiles the ui to py. If output name is not defined it is taken from the input name """
+
+    output_py_file = output_py_file or input_ui_file.with_suffix('.py')
+
+    output_py_file = output_py_file.as_posix()
+    input_ui_file = input_ui_file.as_posix()
+
+    subprocess.check_call([pyuic5_exec, '-o', output_py_file, input_ui_file])

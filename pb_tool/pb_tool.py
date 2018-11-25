@@ -39,7 +39,7 @@ from pathlib import Path
 
 import click
 
-from utils import cfg_is_valid, qgis_dst_plugin_folder
+from utils import qgis_dst_plugin_folder
 from utils.files import install_files, clean_deployment, compile_files
 
 

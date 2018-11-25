@@ -4,10 +4,8 @@ from pathlib import Path
 
 from .find_qgis_dir import qgis_plugin_dir
 
-__all__ = [ 'qgis_plugin_dir', 'qgis_dst_plugin_folder']
 
-
-def qgis_dst_plugin_folder(profile='default') -> Path:
+def qgis_default_plugin_folder(profile='default') -> Path:
     """ The QGIS master Plugin folder """
 
     # caveat: env variable QGIS_PLUGINPATH overrides everything?
@@ -18,7 +16,7 @@ def qgis_dst_plugin_folder(profile='default') -> Path:
 
     os = platform.system()
     if os == 'Windows':
-        qgis_user_profile = Path('AppData\Roaming\QGIS\QGIS3\profiles')
+        qgis_user_profile = Path(r'AppData\Roaming\QGIS\QGIS3\profiles')
     elif os == 'Linux':
         qgis_user_profile = Path('.local/share/QGIS/QGIS3/profiles')
     elif os == 'Darwin':  # MacOS?

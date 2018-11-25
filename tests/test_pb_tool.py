@@ -1,3 +1,4 @@
+import platform
 from pathlib import Path
 import pytest
 
@@ -31,6 +32,23 @@ def test_conf_get_py_files(valid_conf_file):
                    Path('folder1/subfolder1/file2.py')]
 
 
+def test_cong_get_ui_files(valid_conf_file):
+    from pb_tool.utils.configuration import PbConf
+    config = PbConf(valid_conf_file)
+
+    res = config.ui_files
+    assert res == [Path('main_window.ui'), Path('ui/about.ui')]
+
+
+def test_cong_get_ui_files_as_py(valid_conf_file):
+    from pb_tool.utils.configuration import PbConf
+    config = PbConf(valid_conf_file)
+
+    res = config.ui_files_as_py
+    assert res == [Path('main_window.py'), Path('ui/about.py')]
+
+
+@pytest.mark.skip
 def test_conf_get_extra_files(valid_conf_file):
     from pb_tool.utils.configuration import PbConf
     config = PbConf(valid_conf_file)
@@ -38,8 +56,33 @@ def test_conf_get_extra_files(valid_conf_file):
     assert config.extra_files
 
 
+@pytest.mark.skip
 def test_conf_get_main_dialog(valid_conf_file):
     from pb_tool.utils.configuration import PbConf
     config = PbConf(valid_conf_file)
 
     assert config.main_dialog
+
+
+def test_conf_get_plugin_name(valid_conf_file):
+    from pb_tool.utils.configuration import PbConf
+    config = PbConf(valid_conf_file)
+
+    assert config.plugin_name == 'TestPlugin'
+
+
+@pytest.mark.skipif(platform.system() != 'Windows',
+                    reason="Non Windows Tests missing.")
+def test_conf_get_install_dir(valid_conf_file):
+    from pb_tool.utils.configuration import PbConf
+    config = PbConf(valid_conf_file)
+    left = config.install_dir
+
+    os = platform.system()
+    if os == 'Windows':
+        right = Path(r'~/AppData\Roaming\QGIS\QGIS3\profiles/default/python/plugins/TestPlugin').expanduser()
+        assert left == right
+    # elif os == 'Linux':
+    #     qgis_user_profile = user_home_path / Path('.local/share/QGIS/QGIS3/profiles')
+    # elif os == 'Darwin':  # MacOS?
+    #     qgis_user_profile = user_home_path / Path('Library/Application Support/QGIS/QGIS3/profiles')
