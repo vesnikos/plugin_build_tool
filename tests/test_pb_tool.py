@@ -13,6 +13,9 @@ def valid_conf_file():
 
 
 def test_conf_is_valid(valid_conf_file):
+
+    # PbConf.is_valid tests if configuration is valid
+
     from pb_tool.utils.configuration import PbConf
     config = PbConf(valid_conf_file)
 
@@ -44,11 +47,10 @@ def test_cong_get_ui_files_as_py(valid_conf_file):
     from pb_tool.utils.configuration import PbConf
     config = PbConf(valid_conf_file)
 
-    res = config.ui_files_as_py
+    res = config.as_py(config.ui_files)
     assert res == [Path('main_window.py'), Path('ui/about.py')]
 
 
-@pytest.mark.skip
 def test_conf_get_extra_files(valid_conf_file):
     from pb_tool.utils.configuration import PbConf
     config = PbConf(valid_conf_file)
@@ -56,12 +58,11 @@ def test_conf_get_extra_files(valid_conf_file):
     assert config.extra_files
 
 
-@pytest.mark.skip
-def test_conf_get_main_dialog(valid_conf_file):
+def test_conf_get_resource_files(valid_conf_file):
     from pb_tool.utils.configuration import PbConf
     config = PbConf(valid_conf_file)
 
-    assert config.main_dialog
+    assert config.resource_files == [Path('resources.qrc'), ]
 
 
 def test_conf_get_plugin_name(valid_conf_file):
@@ -86,3 +87,12 @@ def test_conf_get_install_dir(valid_conf_file):
     #     qgis_user_profile = user_home_path / Path('.local/share/QGIS/QGIS3/profiles')
     # elif os == 'Darwin':  # MacOS?
     #     qgis_user_profile = user_home_path / Path('Library/Application Support/QGIS/QGIS3/profiles')
+
+
+def test_conf_path_list_as_py():
+    from pb_tool.utils.configuration import PbConf
+
+    plist = [Path('asdf.qrc'), ]
+    result = PbConf.as_py(plist)
+
+    assert result == [Path('asdf.py'), ]

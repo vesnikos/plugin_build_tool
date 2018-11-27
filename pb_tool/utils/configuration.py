@@ -1,9 +1,8 @@
-from typing import List, Union
+from typing import List, Union, Optional
 from pathlib import Path
 from configparser import ConfigParser
 
-
-from utils import qgis_default_plugin_folder
+from pb_tool.utils import qgis_default_plugin_folder
 
 
 class PbConf:
@@ -27,34 +26,37 @@ class PbConf:
         return Path(self.file_path).parent
 
     @property
-    def plugin_name(self)->str:
+    def plugin_name(self) -> str:
         name = self._configuration.get('plugin', 'name')
 
         return name
 
-    # @property
-    # def main_dialog(self) -> List[Path]:
-    #     main_dialog = self.configuration.get('files', 'main_dialog').split()
-    #
-    #     main_dialog = map(Path, main_dialog)
-    #     return main_dialog
-    #
-    # @property
-    # def extra_files(self) -> List[Path]:
-    #
-    #     # this is not mandatory
-    #     f = self.configuration.get('files', 'extra_files', fallback='').split()
-    #
-    #     f = map(Path, f)
-    #     return f
+    @property
+    def extra_files(self) -> List[Path]:
+
+        # mandatory, at least two extra files should be present. (icon.png metadata.txt)
+        # could be all files in a folder
+        extra_files = []
+
+        for entry in self._configuration.get('files', 'extra_files').split():
+            entry = self.project_dir / Path(entry)
+            if entry.is_dir():
+                for _ in entry.glob('*.*'):
+                    _ = _.relative_to(self.project_dir)
+                    extra_files.append(_)
+            else:
+                entry = entry.relative_to(self.project_dir)
+                extra_files.append(entry)
+
+        return extra_files
 
     @property
     def python_files(self) -> List[Path]:
-
-        ''' A list of .py file to move with the plugin. Relative to 'project_dir'. '''
+        """ A list of .py file to move with the plugin. Relative to 'project_dir'. """
+        # mandatory, at least two extra files should be present. (icon.png metadata.txt)
+        # could be all files in a folder
 
         python_files = []
-
         for entry in self._configuration.get('files', 'python_files').split():
             entry = self.project_dir / Path(entry)
             if entry.is_dir():
@@ -79,16 +81,6 @@ class PbConf:
         return ui_files
 
     @property
-    def ui_files_as_py(self)-> List[Path]:
-
-        ret = []
-        ui_files = self.ui_files
-        for ui_file in ui_files:
-            ret.append(ui_file.with_suffix('.py'))
-
-        return ret
-
-    @property
     def is_valid(self) -> bool:
         """
         Check the pb_tool.cfg file for mandatory sections.
@@ -108,7 +100,7 @@ class PbConf:
             return False
         if self._configuration.get('files', 'resource_files', fallback=None) is None:
             return False
-        if self._configuration.get('files', 'extras', fallback=None) is None:
+        if self._configuration.get('files', 'extra_files', fallback=None) is None:
             return False
         # Help dir should not be mandatory
         # if config.get('help', 'dir', fallback=None) is None:
@@ -122,7 +114,26 @@ class PbConf:
     def install_dir(self) -> Path:
         install_dir = self._configuration.get('plugin', 'install_dir') or None
         if install_dir is None:
-            install_dir = qgis_default_plugin_folder()
+            install_dir = qgis_default_plugin_folder
 
         install_dir = install_dir / self.plugin_name
         return install_dir
+
+    @property
+    def resource_files(self) -> List[Optional[Path]]:
+        resource_files = self._configuration.get('files', 'resource_files').split()
+        if len(resource_files) == 0:
+            return []
+        else:
+            resource_files = map(Path, resource_files)
+            resource_files = list(resource_files)
+
+            return resource_files
+
+    @classmethod
+    def as_py(cls, plist: List[Path]) -> List[Path]:
+        ret = []
+        for p in plist:
+            ret.append(p.with_suffix('.py'))
+
+        return ret

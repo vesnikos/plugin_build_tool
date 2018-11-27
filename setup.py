@@ -20,17 +20,20 @@
 
 from setuptools import *
 
+__version__ = '3.0.6'
+__email__ = 'gsherman@geoapt.com'
+
 setup(
         python_requires='>3.7',
         name='pb_tool',
-        version='3.0.6',
+        version=__version__,
         description='Plugin build tool for QGIS: A tool to aid in QGIS Python plugin development',
         long_description='pb_tool provides commands to deploy and publish a QGIS Python plugin.',
         url='http://g-sherman.github.io/plugin_build_tool',
         author='Gary Sherman',
-        author_email='gsherman@geoapt.com',
+        author_email=__email__,
         maintainer='Gary Sherman',
-        maintainer_email='gsherman@geoapt.com',
+        maintainer_email=__email__,
         license='GPL2',
         classifiers=[
             'Development Status :: 5 - Production/Stable',
@@ -53,7 +56,7 @@ setup(
         extras_require={
             'docs': ['Sphinx'],
             'dev': ['bumpversion', 'tox'],
-            'test':['pytest']
+            'test': ['pytest']
         },
         entry_points='''
         [console_scripts]

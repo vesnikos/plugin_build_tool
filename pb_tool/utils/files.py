@@ -42,22 +42,6 @@ def file_changed(this: Union[str, Path], other: Union[str, Path]) -> bool:
     return this_st_mtime > other_st_mtime
 
 
-def install_files_dict(config: ConfigParser) -> dict:
-    # Python  files that should be deployed with the plugin
-    python_files = config.get('files', 'python_files').split()
-
-    # The main dialog file that is loaded (not compiled)
-    main_dialog = config.get('files', 'main_dialog').split()
-
-    # Other files required for the plugin
-    extras = config.get('files', 'extras').split()
-
-    return {'python_files': python_files,
-            'main_dialog': main_dialog,
-            'extras': extras,
-            }
-
-
 def install_files(qgis_dst_plugin_root: Union[Path, str], config: ConfigParser):
     """
     Copies the files to QGIS for usage.
@@ -216,8 +200,6 @@ def compile_files(config: ConfigParser):
         else:
             print("{0} does not exist---skipped".format(res))
     print("Compiled {0} resource files".format(counter))
-
-
 
 
 def compile_ui(input_ui_file: Path, output_py_file: Path=None):
