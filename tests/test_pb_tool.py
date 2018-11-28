@@ -22,6 +22,16 @@ def test_conf_is_valid(valid_conf_file):
     assert config.is_valid is True
 
 
+def test_conf_get_project_dir(valid_conf_file):
+    from pb_tool.utils.configuration import PbConf
+    config = PbConf(valid_conf_file)
+
+    project_path = config.project_dir
+    expected_path = Path(valid_conf_file).parent
+
+    assert project_path == expected_path
+
+
 def test_conf_get_py_files(valid_conf_file):
     from pb_tool.utils.configuration import PbConf
     config = PbConf(valid_conf_file)
@@ -39,16 +49,22 @@ def test_cong_get_ui_files(valid_conf_file):
     from pb_tool.utils.configuration import PbConf
     config = PbConf(valid_conf_file)
 
-    res = config.ui_files
-    assert res == [Path('main_window.ui'), Path('ui/about.ui')]
+    result = config.ui_files
+    expected = [config.project_dir / Path('main_window.ui'),
+                config.project_dir / Path('ui/about.ui')]
+
+    assert result == expected
 
 
 def test_cong_get_ui_files_as_py(valid_conf_file):
     from pb_tool.utils.configuration import PbConf
     config = PbConf(valid_conf_file)
 
-    res = config.as_py(config.ui_files)
-    assert res == [Path('main_window.py'), Path('ui/about.py')]
+    ui_files = config.ui_files
+    result = config.as_py(ui_files)
+    expected = [config.project_dir / Path('main_window.py'),
+                config.project_dir / Path('ui/about.py')]
+    assert result == expected
 
 
 def test_conf_get_extra_files(valid_conf_file):
@@ -96,3 +112,20 @@ def test_conf_path_list_as_py():
     result = PbConf.as_py(plist)
 
     assert result == [Path('asdf.py'), ]
+
+
+def test_files_compile_ui(valid_conf_file):
+    from pb_tool.utils.files import compile_ui
+
+    from pb_tool.utils.configuration import PbConf
+    config = PbConf(valid_conf_file)
+    correct_ui, broken_ui_file = config.ui_files
+    result = compile_ui(correct_ui)
+
+    assert result == correct_ui.with_suffix('.py')
+    # this one raises ValueError
+    with pytest.raises(ValueError):
+        compile_ui(broken_ui_file)
+
+# def test_files_clean_ui_files(valid_conf_file):
+#     from pb_tool.utils.files import compile_ui

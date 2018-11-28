@@ -2,7 +2,7 @@ import shutil
 import subprocess
 from distutils.dir_util import copy_tree
 from pathlib import Path
-from typing import Union, List
+from typing import Union, List, Optional
 
 from configparser import ConfigParser
 
@@ -202,12 +202,17 @@ def compile_files(config: ConfigParser):
     print("Compiled {0} resource files".format(counter))
 
 
-def compile_ui(input_ui_file: Path, output_py_file: Path=None):
+def compile_ui(input_ui_file: Path, output_py_file: Path=None)->Path:
     """ Compiles the ui to py. If output name is not defined it is taken from the input name """
 
     output_py_file = output_py_file or input_ui_file.with_suffix('.py')
 
-    output_py_file = output_py_file.as_posix()
-    input_ui_file = input_ui_file.as_posix()
+    dst = output_py_file.absolute().as_posix()
+    src = input_ui_file.absolute().as_posix()
 
-    subprocess.check_call([pyuic5_exec, '-o', output_py_file, input_ui_file])
+    try:
+        subprocess.check_call([pyuic5_exec, '-o', dst, src])
+    except subprocess.CalledProcessError:
+        raise ValueError('UI file compilation failed.')
+
+    return Path(output_py_file.as_posix())

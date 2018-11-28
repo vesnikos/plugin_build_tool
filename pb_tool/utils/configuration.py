@@ -73,10 +73,11 @@ class PbConf:
     def ui_files(self) -> List[Path]:
 
         # mandatory, at least one ui file should be present
-        ui_files = self._configuration.get('files', 'ui_files').split()
 
-        ui_files = map(Path, ui_files)
-        ui_files = list(ui_files)
+        ui_files = []
+        for entry in self._configuration.get('files', 'ui_files').split():
+            entry = self.project_dir / Path(entry)
+            ui_files.append(entry)
 
         return ui_files
 
