@@ -1,0 +1,1 @@
+A folder to place icons used in the application.

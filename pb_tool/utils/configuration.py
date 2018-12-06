@@ -14,6 +14,8 @@ class PbConf:
 
         self._configuration = ConfigParser()
         self._configuration.read(self._file_path)
+        if not self.is_valid:
+            raise ValueError('The configuration file is not Valid')
 
     @property
     def file_path(self) -> Path:
@@ -83,33 +85,8 @@ class PbConf:
 
     @property
     def is_valid(self) -> bool:
-        """
-        Check the pb_tool.cfg file for mandatory sections.
-        """
-
-        # TODO:
-        # Check if the plugin name has valid name.
-        plugin_name = self._configuration.get('plugin', 'name', fallback=None)
-        if plugin_name is None:
-            return False
-
-        # Check if the files::python_files is set, and if they point to a valid file
-        python_files = self._configuration.get('files', 'python_files', fallback=None)
-        if python_files is None:
-            return False
-        if self._configuration.get('files', 'ui_files', fallback=None) is None:
-            return False
-        if self._configuration.get('files', 'resource_files', fallback=None) is None:
-            return False
-        if self._configuration.get('files', 'extra_files', fallback=None) is None:
-            return False
-        # Help dir should not be mandatory
-        # if config.get('help', 'dir', fallback=None) is None:
-        #     return False
-        # if config.get('help', 'target', fallback=None) is None:
-        #     return False
-
-        return True
+        res = is_valid(self.file_path)
+        return res
 
     @property
     def install_dir(self) -> Path:
@@ -138,3 +115,41 @@ class PbConf:
             ret.append(p.with_suffix('.py'))
 
         return ret
+
+
+def is_valid(conf: Union[Path, ConfigParser]) -> bool:
+    """
+    Check the pb_tool.cfg file for mandatory sections.
+    """
+
+    _configuration = None
+    if isinstance(conf, Path):
+        _configuration = ConfigParser().read(conf)
+    if isinstance(conf, ConfigParser):
+        _configuration = _configuration
+    if _configuration is None:
+        raise AttributeError('Conf must be either Configuration object or Path')
+
+    # TODO:
+    # Check if the plugin name has valid name.
+    plugin_name = _configuration.get('plugin', 'name', fallback=None)
+    if plugin_name is None:
+        return False
+
+    # Check if the files::python_files is set, and if they point to a valid file
+    python_files = _configuration.get('files', 'python_files', fallback=None)
+    if python_files is None:
+        return False
+    if _configuration.get('files', 'ui_files', fallback=None) is None:
+        return False
+    if _configuration.get('files', 'resource_files', fallback=None) is None:
+        return False
+    if _configuration.get('files', 'extra_files', fallback=None) is None:
+        return False
+    # Help dir should not be mandatory
+    # if config.get('help', 'dir', fallback=None) is None:
+    #     return False
+    # if config.get('help', 'target', fallback=None) is None:
+    #     return False
+
+    return True

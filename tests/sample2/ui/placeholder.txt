@@ -1,0 +1,1 @@
+A folder to place compiled ui (.py) file to be used in the app.
