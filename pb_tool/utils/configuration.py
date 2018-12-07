@@ -6,16 +6,184 @@ from pb_tool.utils import qgis_default_plugin_folder
 
 
 class PbConf:
+    # Mandatory Fields
+    _name: str = None
+    _about: str = None
+    _email: str = None
+    _author: str = None
+    _qgisMinimumVersion: str = None
+    _description: str = None
+    _version: float = None
+    _tracker: str = None
+    _repository: str = None
 
-    def __init__(self, file_path: Union[str, Path]):
-        self._file_path = Path(file_path)
+    # optional
+    _category: str = None
+    _changelog: str = None
+    _tag_list: List[str] = None
+    _homepage: str = None
+    _icon: str = None
+    _experimental: bool = None
+
+    # danger
+    _deprecated: bool = None
+
+    def __init__(self, pb_conf_fpath: Union[str, Path],
+                 qgis_metadata_fpath: Optional[Union[str, Path]]):
+        self._configuration = ConfigParser()
+        self.has_qgis_metadata = False
+
+        self._file_path = Path(pb_conf_fpath)
+        self._qgis_metadata_path = Path(qgis_metadata_fpath)
+
         if not self._file_path.is_file():
             raise ValueError(f'{self._file_path.as_posix()} does not exist.')
-
-        self._configuration = ConfigParser()
         self._configuration.read(self._file_path)
+
+        if self._qgis_metadata_path.is_file():
+            self._configuration.read(self._qgis_metadata_path)
+            self.has_qgis_metadata = True
+
         if not self.is_valid:
             raise ValueError('The configuration file is not Valid')
+
+    @property
+    def about(self):
+        res = self._configuration.get('general', 'about', fallback=None) or self._about
+        return res
+
+    @about.setter
+    def about(self, value: str):
+        value = value.strip()
+        self._about = value
+
+    @property
+    def name(self) -> str:
+        if self._name is None:
+            self._name = self._configuration.get('general', 'name', fallback='') \
+                         or self._configuration.get('plugin', 'name', fallback='')
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+
+    @property
+    def email(self):
+        if self._email is None:
+            self._email = self._configuration.get('general', 'email', fallback='')
+        return self._email
+
+    @email.setter
+    def email(self, value: str):
+        value = value.strip()
+        # TODO: valid the input email
+        self._email = value
+
+    @property
+    def author(self):
+        if self._author is None:
+            self._author = self._configuration.get('general', 'author', fallback='')
+        return self._author
+
+    @author.setter
+    def author(self, value: str):
+        value = value.strip()
+        self._author = value
+
+    @property
+    def qgisMinimumVersion(self):
+        if self._qgisMinimumVersion is None:
+            self._qgisMinimumVersion = self._configuration.get('general', 'qgisMinimumVersion', fallback='')
+        return self._qgisMinimumVersion
+
+    @qgisMinimumVersion.setter
+    def qgisMinimumVersion(self, value: str):
+        value = value.strip()
+        self._qgisMinimumVersion = value
+
+    @property
+    def description(self):
+        if self._description is None:
+            self._description = self._configuration.get('general', 'description', fallback='')
+        return self._description
+
+    @description.setter
+    def description(self, value: str):
+        value = value.strip()
+        self._description = value
+
+    @property
+    def version(self):
+        if self._version is None:
+            self._version = self._configuration.get('general', 'version', fallback='')
+        return self._version
+
+    @version.setter
+    def version(self, value: Union[float, str]):
+        value = float(value)
+        self._version = value
+
+    @property
+    def tracker(self):
+        if self._tracker is None:
+            self._tracker = self._configuration.get('general', 'tracker', fallback='')
+        return self._tracker
+
+    @tracker.setter
+    def tracker(self, value: str):
+        value = value.strip()
+        self._tracker = value
+
+    @property
+    def repository(self):
+        if self._repository is None:
+            self._repository = self._configuration.get('general', 'repository', fallback='')
+        return self._repository
+
+    @repository.setter
+    def repository(self, value: str):
+        value = value.strip()
+        self._repository = value
+
+    @property
+    def is_valid(self) -> bool:
+        """
+            Check if the configuration is valid.
+        """
+
+        def nop(val) -> bool:
+            if val is None:
+                return True
+            if val is '':
+                return True
+
+        missing = []
+        # Mandatory Fields
+        if nop(self.name):
+            missing.append('name')
+        if nop(self.about):
+            missing.append('about')
+        if nop(self.email):
+            missing.append('email')
+        if nop(self.author):
+            missing.append('author')
+        if nop(self.qgisMinimumVersion):
+            missing.append('qgisMinimumVersion')
+        if nop(self.description):
+            missing.append('description')
+        if nop(self.version):
+            missing.append('description')
+        if nop(self.tracker):
+            missing.append('tracker')
+        if nop(self.repository):
+            missing.append('repository')
+
+        if len(missing) == 0:
+            return True
+        else:
+            # check missing list for which one were not set
+            return False
 
     @property
     def file_path(self) -> Path:
@@ -84,11 +252,6 @@ class PbConf:
         return ui_files
 
     @property
-    def is_valid(self) -> bool:
-        res = is_valid(self.file_path)
-        return res
-
-    @property
     def install_dir(self) -> Path:
         install_dir = self._configuration.get('plugin', 'install_dir') or None
         if install_dir is None:
@@ -115,41 +278,3 @@ class PbConf:
             ret.append(p.with_suffix('.py'))
 
         return ret
-
-
-def is_valid(conf: Union[Path, ConfigParser]) -> bool:
-    """
-    Check the pb_tool.cfg file for mandatory sections.
-    """
-
-    _configuration = None
-    if isinstance(conf, Path):
-        _configuration = ConfigParser().read(conf)
-    if isinstance(conf, ConfigParser):
-        _configuration = _configuration
-    if _configuration is None:
-        raise AttributeError('Conf must be either Configuration object or Path')
-
-    # TODO:
-    # Check if the plugin name has valid name.
-    plugin_name = _configuration.get('plugin', 'name', fallback=None)
-    if plugin_name is None:
-        return False
-
-    # Check if the files::python_files is set, and if they point to a valid file
-    python_files = _configuration.get('files', 'python_files', fallback=None)
-    if python_files is None:
-        return False
-    if _configuration.get('files', 'ui_files', fallback=None) is None:
-        return False
-    if _configuration.get('files', 'resource_files', fallback=None) is None:
-        return False
-    if _configuration.get('files', 'extra_files', fallback=None) is None:
-        return False
-    # Help dir should not be mandatory
-    # if config.get('help', 'dir', fallback=None) is None:
-    #     return False
-    # if config.get('help', 'target', fallback=None) is None:
-    #     return False
-
-    return True

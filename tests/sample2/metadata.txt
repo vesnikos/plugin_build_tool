@@ -1,0 +1,28 @@
+[general]
+name=HelloWord
+email=me@example.com
+author=Just Me
+qgisMinimumVersion=3.4
+description=A multiline example
+    description of what this plugin
+    is about. No HTML.
+about=A paragraph contained a detailed description. No Html.
+version=0.1
+tracker=http://...
+repository:http://
+
+; Optional Metadata
+category=Raster
+Changelog=Changes:
+    1.0 - First Release
+    0.9.1 - Bug fix.
+    0.9.0 - Last Feature Before Realease
+; comma separated values
+tags=raster,hello-world,python
+homepage=http://
+icon=assets/icons/icon.png
+
+experimental=True
+
+; Danger Zone
+deprecated=False
