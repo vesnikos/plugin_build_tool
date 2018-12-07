@@ -1,6 +1,6 @@
-from typing import List, Union, Optional
-from pathlib import Path
 from configparser import ConfigParser
+from pathlib import Path
+from typing import List, Optional, Set, Union
 
 from pb_tool.utils import qgis_default_plugin_folder
 
@@ -17,19 +17,22 @@ class PbConf:
     _tracker: str = None
     _repository: str = None
 
+    _extra_files: set = set()
+    _python_files: set = set()
+
     # optional
     _category: str = None
     _changelog: str = None
     _tag_list: List[str] = None
     _homepage: str = None
     _icon: str = None
-    _experimental: bool = None
+    _experimental: bool = True
 
     # danger
-    _deprecated: bool = None
+    _deprecated: bool = False
 
     def __init__(self, pb_conf_fpath: Union[str, Path],
-                 qgis_metadata_fpath: Optional[Union[str, Path]]):
+                 qgis_metadata_fpath: Union[str, Path]):
         self._configuration = ConfigParser()
         self.has_qgis_metadata = False
 
@@ -114,13 +117,13 @@ class PbConf:
         self._description = value
 
     @property
-    def version(self):
+    def plugin_version(self) -> Optional[float]:
         if self._version is None:
-            self._version = self._configuration.get('general', 'version', fallback='')
+            self._version = self._configuration.getfloat('general', 'version', fallback=None)
         return self._version
 
-    @version.setter
-    def version(self, value: Union[float, str]):
+    @plugin_version.setter
+    def plugin_version(self, value: Union[float, str]):
         value = float(value)
         self._version = value
 
@@ -147,6 +150,79 @@ class PbConf:
         self._repository = value
 
     @property
+    def category(self):
+        if self._category is None:
+            self._category = self._configuration.get('general', 'category', fallback='')
+        return self._category
+
+    @category.setter
+    def category(self, value: str):
+        value = value.strip()
+        self._category = value
+
+    @property
+    def changelog(self) -> str:
+        if self._changelog is None:
+            self._changelog = self._configuration.get('general', 'changelog', fallback='')
+        return self._changelog
+
+    @changelog.setter
+    def changelog(self, value: str):
+        value = value.strip()
+        self._changelog = value
+
+    @property
+    def tag_list(self) -> List[str]:
+        if self._tag_list is None:
+            tag_list = self._configuration.get('general', 'tags', fallback='')
+            tag_list = tag_list.split(',')
+            self._tag_list = tag_list
+        return self._tag_list
+
+    @tag_list.setter
+    def tag_list(self, value: List[str]):
+        self._tag_list = value
+
+    @property
+    def homepage(self) -> str:
+        if self._homepage is None:
+            self._homepage = self._configuration.get('general', 'homepage', fallback='')
+        return self._homepage
+
+    @homepage.setter
+    def homepage(self, value):
+        self._homepage = value
+
+    @property
+    def icon(self):
+        if self._icon is None:
+            self._icon.get('general', 'icon', fallback='')
+        return self._icon
+
+    @icon.setter
+    def icon(self, value):
+        p = Path(value)
+        if not p.is_file():
+            raise AttributeError('%s is not an file.' % value)
+        self._icon = value
+
+    @property
+    def experimental(self):
+        return self._configuration.getboolean('general', 'experimental', fallback='') or self._experimental
+
+    @experimental.setter
+    def experimental(self, value: bool):
+        self._experimental = bool(value)
+
+    @property
+    def deprecated(self):
+        return self._configuration.getboolean('general', 'deprecated', fallback=False) or self._deprecated
+
+    @deprecated.setter
+    def deprecated(self, value: bool):
+        self._deprecated = bool(value)
+
+    @property
     def is_valid(self) -> bool:
         """
             Check if the configuration is valid.
@@ -159,7 +235,7 @@ class PbConf:
                 return True
 
         missing = []
-        # Mandatory Fields
+        # Mandatory Fields from metadata.txt
         if nop(self.name):
             missing.append('name')
         if nop(self.about):
@@ -172,12 +248,18 @@ class PbConf:
             missing.append('qgisMinimumVersion')
         if nop(self.description):
             missing.append('description')
-        if nop(self.version):
+        if nop(self.plugin_version):
             missing.append('description')
         if nop(self.tracker):
             missing.append('tracker')
         if nop(self.repository):
             missing.append('repository')
+
+        # mandatory files from pb_tool.cfg
+        if nop(self.ui_files):
+            missing.append('ui_files')
+        if nop(self.python_files):
+            missing.append('python_files')
 
         if len(missing) == 0:
             return True
@@ -185,59 +267,55 @@ class PbConf:
             # check missing list for which one were not set
             return False
 
-    @property
-    def file_path(self) -> Path:
-        ret = Path(self._file_path)
-        return ret
+    # @property
+    # def file_path(self) -> Path:
+    #     """ The path for the pb_tool.cfg file """
+    #     ret = Path(self._file_path)
+    #     return ret
 
     @property
     def project_dir(self) -> Path:
         """ The project path, defined as where the configuration file is. """
-        return Path(self.file_path).parent
+        return Path(self._file_path).parent
 
     @property
     def plugin_name(self) -> str:
-        name = self._configuration.get('plugin', 'name')
+        # name = self._configuration.get('plugin', 'name'
+        # deprecated; use self.name
 
-        return name
+        return self.name
 
     @property
-    def extra_files(self) -> List[Path]:
-
-        # mandatory, at least two extra files should be present. (icon.png metadata.txt)
-        # could be all files in a folder
-        extra_files = []
-
+    def extra_files(self) -> Set[Path]:
         for entry in self._configuration.get('files', 'extra_files').split():
             entry = self.project_dir / Path(entry)
             if entry.is_dir():
                 for _ in entry.glob('*.*'):
                     _ = _.relative_to(self.project_dir)
-                    extra_files.append(_)
+                    self._extra_files.add(_)
             else:
                 entry = entry.relative_to(self.project_dir)
-                extra_files.append(entry)
+                self._extra_files.add(entry)
 
-        return extra_files
+        return self._extra_files
 
     @property
-    def python_files(self) -> List[Path]:
+    def python_files(self) -> Set[Path]:
         """ A list of .py file to move with the plugin. Relative to 'project_dir'. """
-        # mandatory, at least two extra files should be present. (icon.png metadata.txt)
+        # mandatory, at least two extra files should be present.
         # could be all files in a folder
 
-        python_files = []
         for entry in self._configuration.get('files', 'python_files').split():
             entry = self.project_dir / Path(entry)
             if entry.is_dir():
                 for _ in entry.glob("*.py"):
                     _ = _.relative_to(self.project_dir)
-                    python_files.append(_)
+                    self._python_files.add(_)
             else:
                 entry = entry.relative_to(self.project_dir)
-                python_files.append(entry)
+                self._python_files.add(entry)
 
-        return python_files
+        return self._python_files
 
     @property
     def ui_files(self) -> List[Path]:
