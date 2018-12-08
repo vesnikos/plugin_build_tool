@@ -23,7 +23,7 @@ def metadata():
 def test_pb_conf_attributes(conf, metadata):
     from pb_tool.utils.configuration import PbConf
     config = PbConf(conf, metadata)
-    assert config.about == 'A paragraph contained a detailed description. No Html.'
+    assert config.about == 'HelloWorld Addin'
     assert config.author == 'Just Me'
     assert config.changelog == 'Changes:\n1.0 - First Release\n0.9.1 - Bug fix.\n0.9.0 - Last Feature Before Release'
     assert config.deprecated is False
@@ -92,20 +92,9 @@ def test_cong_get_ui_files(conf, metadata):
     config = PbConf(conf, metadata)
 
     result = config.ui_files
-    expected = [config.project_dir / Path('main_window.ui'),
-                config.project_dir / Path('ui/about.ui')]
+    expected = [[config.project_dir / Path('designer/about_widget.ui'),
+                 config.project_dir / Path('ui/about_widget.py')]]
 
-    assert result == expected
-
-
-def test_cong_get_ui_files_as_py(conf, metadata):
-    from pb_tool.utils.configuration import PbConf
-    config = PbConf(conf, metadata)
-
-    ui_files = config.ui_files
-    result = config.as_py(ui_files)
-    expected = [config.project_dir / Path('main_window.py'),
-                config.project_dir / Path('ui/about.py')]
     assert result == expected
 
 
@@ -140,27 +129,21 @@ def test_conf_get_install_dir(conf, metadata):
     #     qgis_user_profile = user_home_path / Path('Library/Application Support/QGIS/QGIS3/profiles')
 
 
-def test_conf_path_list_as_py():
-    from pb_tool.utils.configuration import PbConf
-
-    plist = [Path('asdf.qrc'), ]
-    result = PbConf.as_py(plist)
-
-    assert result == [Path('asdf.py'), ]
-
-
 def test_files_compile_ui(conf, metadata):
     from pb_tool.utils.files import compile_ui
-
+    clean_up = []
     from pb_tool.utils.configuration import PbConf
     config = PbConf(conf, metadata)
-    correct_ui, broken_ui_file = config.ui_files
-    result = compile_ui(correct_ui)
+    for src, dst in config.ui_files:
+        result = compile_ui(src, dst)
+        clean_up.append(result)
+        assert result.is_file()
 
-    assert result == correct_ui.with_suffix('.py')
+    # for f in clean_up:
+    #     f.unlink()
     # this one raises ValueError
-    with pytest.raises(ValueError):
-        compile_ui(broken_ui_file)
+    # with pytest.raises(ValueError):
+    #     compile_ui(broken_ui_file)
 
 # def test_files_clean_ui_files(conf, metadata):
 #     from pb_tool.utils.files import compile_ui

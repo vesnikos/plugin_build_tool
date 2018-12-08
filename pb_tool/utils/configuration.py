@@ -318,14 +318,18 @@ class PbConf:
         return self._python_files
 
     @property
-    def ui_files(self) -> List[Path]:
+    def ui_files(self) -> List[List[Path]]:
 
         # mandatory, at least one ui file should be present
 
         ui_files = []
         for entry in self._configuration.get('files', 'ui_files').split():
-            entry = self.project_dir / Path(entry)
-            ui_files.append(entry)
+            src = self.project_dir / Path(entry)
+            dst = self.as_py(src)
+            if self._configuration.get('files', 'ui_files_put_at', fallback=''):
+                dst_folder = self.project_dir / self._configuration.get('files', 'ui_files_put_at')
+                dst = dst_folder / dst.name
+            ui_files.append([src, dst], )
 
         return ui_files
 
@@ -350,9 +354,6 @@ class PbConf:
             return resource_files
 
     @classmethod
-    def as_py(cls, plist: List[Path]) -> List[Path]:
-        ret = []
-        for p in plist:
-            ret.append(p.with_suffix('.py'))
+    def as_py(cls, as_py: Path) -> Path:
 
-        return ret
+        return as_py.with_suffix('.py')

@@ -1,10 +1,9 @@
 import shutil
 import subprocess
+from configparser import ConfigParser
 from distutils.dir_util import copy_tree
 from pathlib import Path
-from typing import Union, List, Optional
-
-from configparser import ConfigParser
+from typing import Union
 
 import click
 from whichcraft import which
@@ -205,7 +204,8 @@ def compile_files(config: ConfigParser):
 def compile_ui(input_ui_file: Path, output_py_file: Path=None)->Path:
     """ Compiles the ui to py. If output name is not defined it is taken from the input name """
 
-    output_py_file = output_py_file or input_ui_file.with_suffix('.py')
+    if output_py_file is None:
+        output_py_file = input_ui_file.with_suffix('.py')
 
     dst = output_py_file.absolute().as_posix()
     src = input_ui_file.absolute().as_posix()

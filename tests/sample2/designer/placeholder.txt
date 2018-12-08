@@ -1,1 +1,1 @@
-A folder to put Qt Designer Files for Compilation.
+A folder to put Qt Designer Files ui files for Compilation.

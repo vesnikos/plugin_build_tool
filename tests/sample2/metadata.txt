@@ -6,7 +6,7 @@ qgisMinimumVersion=3.4
 description=A multiline example
     description of what this plugin
     is about. No HTML.
-about=A paragraph contained a detailed description. No Html.
+about = HelloWorld Addin
 version=0.1
 tracker=http://...
 repository : http://...
