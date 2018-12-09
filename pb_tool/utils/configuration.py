@@ -196,7 +196,7 @@ class PbConf:
     @property
     def icon(self):
         if self._icon is None:
-            self._icon.get('general', 'icon', fallback='')
+            self._icon = self._configuration.get('general', 'icon', fallback='')
         return self._icon
 
     @icon.setter

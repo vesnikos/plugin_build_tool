@@ -24,6 +24,7 @@ def test_pb_conf_attributes(conf, metadata):
     from pb_tool.utils.configuration import PbConf
     config = PbConf(conf, metadata)
     assert config.about == 'HelloWorld Addin'
+    assert config.icon == 'assets/icons/icon.png'
     assert config.author == 'Just Me'
     assert config.changelog == 'Changes:\n1.0 - First Release\n0.9.1 - Bug fix.\n0.9.0 - Last Feature Before Release'
     assert config.deprecated is False

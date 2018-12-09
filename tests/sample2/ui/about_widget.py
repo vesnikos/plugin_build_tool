@@ -8,7 +8,6 @@
 
 from PyQt5 import QtCore, QtWidgets
 
-
 class Ui_Form(object):
     def setupUi(self, Form):
         Form.setObjectName("Form")
@@ -33,3 +32,4 @@ class Ui_Form(object):
         self.lbl_text.setText(_translate("Form",
                                          "This is an demonstration about box, which is rendered by a compiled .ui file found in the designer folder."))
         self.btn_ok.setText(_translate("Form", "ok"))
+
